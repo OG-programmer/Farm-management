@@ -2,14 +2,19 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 from datetime import datetime
+import os
 import auth  # Import the authentication module
 
 # Check if the user is authenticated before showing the app
 if auth.check_authentication():
 
     # Set up sidebar image and title
-    image = "assets/image1.jpg"  # Replace with your image path
-    st.sidebar.image(image, use_container_width=True)  # Updated use_container_width here
+    image_path = "assets/image2.jpg"  # Replace with your image path
+    if os.path.exists(image_path):
+        st.sidebar.image(image_path, use_container_width=True)
+    else:
+        st.sidebar.warning("Image not found. Please check the path.")
+    
     st.sidebar.write("Manage your farm's livestock and expenses here.")
 
     # Database setup function
@@ -241,68 +246,27 @@ if auth.check_authentication():
         # Create month-year period
         expenses_df['month_year'] = expenses_df['date'].dt.to_period('M')
 
-        # Group by month and description, summing the amounts
-        monthly_expenses = expenses_df.groupby(['month_year', 'description']).agg({'amount': 'sum'}).reset_index()
+        # Group by month_year and aggregate by summing amounts
+        monthly_expenses = expenses_df.groupby('month_year').agg({'amount': 'sum'}).reset_index()
 
-        # Display the grouped data for each month
         for month in monthly_expenses['month_year'].unique():
             with st.expander(f"Expenses Records for {month}"):
-                month_data_expenses = monthly_expenses[monthly_expenses['month_year'] == month][['month_year', 'description', 'amount']]
-                st.dataframe(month_data_expenses)
-
-                # Display total expenses for each month
-                total_expenses = monthly_expenses[monthly_expenses['month_year'] == month]['amount'].sum()
-                st.markdown(f"**Total Expenses for {month}: R{total_expenses:.2f}**")
-
-        # Rainfall Records Section
-        st.subheader("Rainfall Records")
-        rainfall_df = view_table("rainfall")
-
-        # Convert date column to datetime format
-        rainfall_df['date'] = pd.to_datetime(rainfall_df['date'], errors='raise')
-    
-        # Create month-year period for rainfall
-        rainfall_df['month_year'] = rainfall_df['date'].dt.to_period('M')
-
-        # Group by month and get the average rainfall per month
-        monthly_rainfall = rainfall_df.groupby('month_year').agg({'measurement': 'mean'}).reset_index()
-
-        # Display the grouped data for rainfall
-        for month in monthly_rainfall['month_year'].unique():
-            with st.expander(f"Rainfall Records for {month}"):
-                month_data_rainfall = monthly_rainfall[monthly_rainfall['month_year'] == month][['month_year', 'measurement']]
-                st.dataframe(month_data_rainfall)
+                month_data = expenses_df[expenses_df['month_year'] == month][['month_year', 'description', 'amount']]
+                st.dataframe(month_data)
 
     # Document Upload Tab
     elif tab == "Document Upload":
         st.markdown('<div class="header">Document Upload</div>', unsafe_allow_html=True)
-        uploaded_file = st.file_uploader("Upload a document", type=["pdf", "docx", "txt"])
-        if uploaded_file:
-            # Save uploaded document to a specific folder
-            with open(f"uploaded_documents/{uploaded_file.name}", "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            st.success(f"Document {uploaded_file.name} uploaded successfully!")
+        uploaded_files = st.file_uploader("Choose files to upload", accept_multiple_files=True)
+        if uploaded_files:
+            for uploaded_file in uploaded_files:
+                st.write(f"Uploaded file: {uploaded_file.name}")
 
     # Log History Tab
     elif tab == "Log History":
         st.markdown('<div class="header">Log History</div>', unsafe_allow_html=True)
-
-        # Fetch and display the latest 20 logs
-        log_history_df = view_log_history()
-        st.dataframe(log_history_df)
-
-    # Add multiple images at the bottom (side by side)
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.image("assets/image3.jpg", use_container_width=True)  # Updated use_container_width
-
-    with col2:
-        st.image("assets/image2.jpg", use_container_width=True)  # Updated use_container_width
-
-    with col3:
-        st.image("assets/image5.jpg", use_container_width=True)  # Updated use_container_width
-
+        log_df = view_log_history()
+        st.dataframe(log_df)
 
 
 
